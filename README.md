@@ -1,6 +1,6 @@
 # PersistentState
 
-This package helps you to build persistent objects; i.e. objects that need to survive app restarts. 
+This package helps you to build persistent objects; i.e. objects that need to persist across app restarts. 
 
 
 ## Example
