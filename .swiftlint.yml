@@ -1,0 +1,11 @@
+excluded:
+ - Tests/*/XCTestManifests.swift
+
+switch_case_alignment:
+    indented_cases: true
+
+disabled_rules:
+ - file_length
+ - vertical_whitespace
+ - trailing_whitespace
+ - force_try
