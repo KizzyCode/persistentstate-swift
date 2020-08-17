@@ -11,17 +11,23 @@ public enum FilesystemError: Error {
 /// A filesystem backed storage
 ///
 ///  - Attention: When using the `FilesystemStorage`, keys should not be longer that 200 bytes. Also, unsafe characters
-///    are percent encoded and thus consume three bytes instead of one (safe characters are all US-ASCII alphanumericals
-///    `[a-zA-Z0-9]` and `.-_`). Keys with a byte length lower than or equal to 66 are always valid.
+///    are percent encoded and thus consume three bytes instead of one (see `FilesystemStorage.safe` for the default set
+///    of safe characters. Keys with a byte length lower than or equal to 66 are always valid.
 public class FilesystemStorage {
-    /// The overhead requirement when checking for enough free disk space
-    private static let checkOverhead = 8 * 1024 * 1024
-    /// The prefix for keys
-    private static let prefix = "de.KizzyCode.PersistentState.FilesystemStorage."
-    /// All safe characters
-    private static let safe = CharacterSet(
+    /// The default prefix for stored files
+    public static let prefix = "de.KizzyCode.PersistentState.FilesystemStorage."
+    /// The default required overhead requirement when checking for enough free disk space
+    public static let testOverhead = 8 * 1024 * 1024
+    /// The default filesystem-safe characters
+    public static let safeCharacters = CharacterSet(
         charactersIn: "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789" + ".-_")
     
+    /// The prefix for stored files
+    private let prefix: String
+    /// The required overhead when checking for enough free disk space
+    private let testOverhead: Int
+    /// The default filesystem-safe characters
+    private let safeCharacters: CharacterSet
     /// The database directory
     private let dir: URL
     
@@ -32,9 +38,15 @@ public class FilesystemStorage {
     ///   `/Users/<Current_User>/Library/Application Support/<Bundle_ID>/` on Catalyst and macOS and
     ///   `~/.<Bundle_ID>` for unknown-OS
     ///
-    ///  - Parameter bundleID: The application bundle ID
+    ///  - Parameters:
+    ///     - bundleID: The application bundle ID
+    ///     - prefix: The required overhead when checking for enough free disk space
+    ///     - testOverhead: The required overhead when checking for enough free disk space
+    ///     - safeCharacters: The default filesystem-safe characters
     ///  - Throws: `FilesystemError.invalidDir` if the directory does not exists or is not writeable
-    public convenience init(bundleID: String) throws {
+    public convenience init(bundleID: String, prefix: String = FilesystemStorage.prefix,
+                            testOverhead: Int = FilesystemStorage.testOverhead,
+                            safeCharacters: CharacterSet = FilesystemStorage.safeCharacters) throws {
         #if os(macOS) || targetEnvironment(macCatalyst)
         	let appDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
                 .appendingPathComponent("Application Support")
@@ -47,7 +59,7 @@ public class FilesystemStorage {
         	let appDir = URL(fileURLWithPath: userDir).appendingPathComponent(".\(bundleID)")
         #endif
         
-        try self.init(dir: appDir.path)
+        try self.init(dir: appDir.path, prefix: prefix, testOverhead: testOverhead, safeCharacters: safeCharacters)
     }
     /// Creates a filesystem backed storage that stores the data in the container directory for an `appGroup`
     ///
@@ -56,19 +68,36 @@ public class FilesystemStorage {
     ///    Common examples are `/private/var/mobile/Containers/Shared/AppGroup/<Some_UUID>/` on iOS and
     ///    `/Users/<Current_User>/Library/Group%20Containers/<Group>/` on Catalyst and macOS.
     ///
-    ///  - Parameter appGroup: The app group to get the container directory for
+    ///  - Parameters:
+    ///     - appGroup: The app group to get the container directory for
+    ///     - prefix: The required overhead when checking for enough free disk space
+    ///     - testOverhead: The required overhead when checking for enough free disk space
+    ///     - safeCharacters: The default filesystem-safe characters
     ///  - Throws: `FilesystemError.invalidDir` if the directory does not exists or is not writeable
     ///
     ///  - Warning: If there is no container URL for the given app group, a fatal error is raised.
-    public convenience init(appGroup group: String) throws {
+    public convenience init(appGroup group: String, prefix: String = FilesystemStorage.prefix,
+                            testOverhead: Int = FilesystemStorage.testOverhead,
+                            safeCharacters: CharacterSet = FilesystemStorage.safeCharacters) throws {
         let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)!
-        try self.init(dir: dir.path)
+        try self.init(dir: dir.path, prefix: prefix, testOverhead: testOverhead, safeCharacters: safeCharacters)
     }
     /// Creates a filesystem backed storage
     ///
-    ///  - Parameter dir: The directory to store the key-value records in
+    ///  - Parameters:
+    ///     - dir: The directory to store the key-value records in
+    ///     - prefix: The required overhead when checking for enough free disk space
+    ///     - testOverhead: The required overhead when checking for enough free disk space
+    ///     - safeCharacters: The default filesystem-safe characters
     ///  - Throws: `FilesystemError.invalidDir` if the directory does not exists or is not writeable
-    public required init(dir: String) throws {
+    public required init(dir: String, prefix: String = FilesystemStorage.prefix,
+                         testOverhead: Int = FilesystemStorage.testOverhead,
+                         safeCharacters: CharacterSet = FilesystemStorage.safeCharacters) throws {
+        // Set parameters
+        self.prefix = prefix
+        self.testOverhead = testOverhead
+        self.safeCharacters = safeCharacters
+        
         // Check if the directory exists
         var isDir = ObjCBool(false)
         guard FileManager.default.fileExists(atPath: dir, isDirectory: &isDir), isDir.boolValue else {
@@ -95,8 +124,8 @@ extension FilesystemStorage: Storage {
     ///    invalid percent encoding.
     public func list() -> [String] {
         try! FileManager.default.contentsOfDirectory(atPath: self.dir.path)
-            .filter({ $0.starts(with: Self.prefix) })
-            .map({ $0.dropFirst(Self.prefix.count) })
+            .filter({ $0.starts(with: self.prefix) })
+            .map({ $0.dropFirst(self.prefix.count) })
             .map({ $0.removingPercentEncoding! })
     }
     /// Reads an entry if it exists
@@ -106,8 +135,8 @@ extension FilesystemStorage: Storage {
     ///
     ///  - Warning: This function raises a fatal error if a file for the given key exists but cannot be read.
     public func read<S: StringProtocol>(_ key: S) -> Data? {
-        let key = key.addingPercentEncoding(withAllowedCharacters: Self.safe)!
-        let path = self.dir.appendingPathComponent(Self.prefix + key)
+        let key = key.addingPercentEncoding(withAllowedCharacters: self.safeCharacters)!
+        let path = self.dir.appendingPathComponent(self.prefix + key)
         
         guard FileManager.default.fileExists(atPath: path.path) else {
             return nil
@@ -124,11 +153,11 @@ extension FilesystemStorage: Storage {
     ///  - Warning: This function raises a fatal error if it cannot check for enough free space or the entry cannot not
     ///    be written even if there is enough free space.
     public func write<S: StringProtocol, D: DataProtocol>(_ key: S, value: D) throws {
-        let key = key.addingPercentEncoding(withAllowedCharacters: Self.safe)!
-        let path = self.dir.appendingPathComponent(Self.prefix + key)
+        let key = key.addingPercentEncoding(withAllowedCharacters: self.safeCharacters)!
+        let path = self.dir.appendingPathComponent(self.prefix + key)
         
         let freeSpace = try! self.dir.resourceValues(forKeys: [.volumeAvailableCapacityKey]).volumeAvailableCapacity!
-        guard freeSpace + Self.checkOverhead >= value.count else {
+        guard freeSpace + self.testOverhead >= value.count else {
             throw StorageError.outOfSpace("Not enough free disk space to write entry")
         }
         try! Data(value).write(to: path, options: .atomic)
@@ -139,8 +168,8 @@ extension FilesystemStorage: Storage {
     ///
     ///  - Warning: This function raises a fatal error if a file for the given key exists but cannot be deleted.
     public func delete<S: StringProtocol>(_ key: S) {
-        let key = key.addingPercentEncoding(withAllowedCharacters: Self.safe)!
-        let path = self.dir.appendingPathComponent(Self.prefix + key)
+        let key = key.addingPercentEncoding(withAllowedCharacters: self.safeCharacters)!
+        let path = self.dir.appendingPathComponent(self.prefix + key)
         
         if FileManager.default.fileExists(atPath: path.path) {
         	try! FileManager.default.removeItem(at: path)
