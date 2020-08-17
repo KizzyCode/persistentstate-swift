@@ -4,22 +4,22 @@ import XCTest
 
 
 final class PersistentStateTests: XCTestCase {
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("de.KizzyCode.PersistentState.Tests")
+    let testDir = FileManager.default.temporaryDirectory.appendingPathComponent("de.KizzyCode.PersistentState.Tests")
     
     override func setUp() {
         self.tearDown()
-        try! FileManager.default.createDirectory(at: self.tempDir, withIntermediateDirectories: false)
-        print("Writing entries to \"\(self.tempDir.path)\"...")
+        try! FileManager.default.createDirectory(at: self.testDir, withIntermediateDirectories: false)
+        print("Writing entries to \"\(self.testDir.path)\"...")
     }
     override func tearDown() {
-        if FileManager.default.fileExists(atPath: self.tempDir.path) {
-        	print("Deleting \"\(self.tempDir.path)\"...")
-        	try! FileManager.default.removeItem(at: self.tempDir)
+        if FileManager.default.fileExists(atPath: self.testDir.path) {
+        	print("Deleting \"\(self.testDir.path)\"...")
+        	try! FileManager.default.removeItem(at: self.testDir)
         }
     }
     
     func testCounter() throws {
-        let storage = try FilesystemStorage(dir: self.tempDir.path)
+        let storage = try FilesystemStorage(dir: self.testDir.path)
         
         for shadow in 0..<512 {
             let counter = PersistentBox(storage: storage, key: "Counter", default: 0)
@@ -33,7 +33,7 @@ final class PersistentStateTests: XCTestCase {
     }
     
     func testDict() throws {
-        let storage = try FilesystemStorage(dir: self.tempDir.path)
+        let storage = try FilesystemStorage(dir: self.testDir.path)
         var shadow: [String: String] = [:]
         
         for _ in 0..<512 {
@@ -68,7 +68,7 @@ final class PersistentStateTests: XCTestCase {
         }
         
         // A persistent dictionary e.g. to store settings
-        let storage = try! FilesystemStorage(bundleID: "de.KizzyCode.PersistentStorage.Example")
+        let storage = try! FilesystemStorage(dir: self.testDir.path)
         let settings: PersistentDict<String, String> = .init(storage: storage, key: "Settings")
         
         settings["account"] = "Testolope"

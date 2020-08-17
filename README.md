@@ -30,7 +30,7 @@ class Counter {
 A persistent dictionary:
 ```swift
 // A persistent dictionary e.g. to store settings
-let storage = try! FilesystemStorage(bundleID: "de.KizzyCode.PersistentStorage.Example")
+let storage = try! FilesystemStorage(dir: self.testDir.path)
 let settings: PersistentDict<String, String> = .init(storage: storage, key: "Settings")
 
 settings["account"] = "Testolope"
