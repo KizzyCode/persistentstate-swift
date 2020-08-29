@@ -5,9 +5,9 @@ This package helps you to build persistent objects; i.e. objects that need to pe
 
 ## Example
 
-A persistent counter:
 ```swift
 /// A persistent counter
+// swiftlint:disable nesting
 class Counter {
     private var value: PersistentBox<Int>
     
@@ -19,16 +19,13 @@ class Counter {
     
     /// Returns the next counter value
     public func next() -> Int {
-        self.value.get({ (value: inout Int) -> Int in
+        self.value({ (value: inout Int) -> Int in
             defer { value += 1 }
             return value
         })
     }
 }
-```
 
-A persistent dictionary:
-```swift
 // A persistent dictionary e.g. to store settings
 let storage = try! FilesystemStorage(dir: self.testDir.path)
 let settings: PersistentDict<String, String> = .init(storage: storage, key: "Settings")

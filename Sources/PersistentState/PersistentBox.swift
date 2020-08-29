@@ -23,12 +23,12 @@ public final class PersistentBox<T: Codable> {
     ///     - default: The default value to use if there is no stored value object
     ///     - onError: The error hander
     ///     - coder: The coder to en-/decode the value
-    public init<S: StringProtocol>(storage: Storage, key: S, default: T, onError: ErrorHandler? = nil,
-                                   coder: Coder = JSONCoder.default) {
+    public init<S: StringProtocol>(storage: Storage, key: S, default: @autoclosure () -> T,
+                                   onError: ErrorHandler? = nil, coder: Coder = JSONCoder.default) {
         // Write the default value if necessary
         let key = String(key)
         if !storage.list().contains(key) {
-            let data = try! coder.encode(`default`)
+            let data = try! coder.encode(`default`())
             storage.tryWrite(key, value: data, onError: onError)
         }
         
@@ -66,7 +66,7 @@ public final class PersistentBox<T: Codable> {
     ///  - Returns: The value returned by the closure
     ///
     ///  - Throws: Rethrows any error from the closure
-    public func get<R>(_ access: (inout T) throws -> R) rethrows -> R {
+    public func callAsFunction<R>(_ access: (inout T) throws -> R) rethrows -> R {
         // Load value if necessary
         if self.value == nil {
             let data = self.storage.read(self.key)!

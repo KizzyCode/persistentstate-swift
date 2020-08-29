@@ -8,8 +8,8 @@ public final class PersistentDict<K: Codable & Hashable, V: Codable> {
     
     /// The persistent dictionary
     public var dict: [K: V] {
-        get { self.box.get({ $0 }) }
-        set { self.box.get({ $0 = newValue }) }
+        get { self.box({ $0 }) }
+        set { self.box({ $0 = newValue }) }
     }
     
     /// Either loads the the stored dictionary or uses the default value
@@ -20,9 +20,9 @@ public final class PersistentDict<K: Codable & Hashable, V: Codable> {
     ///     - default: The default value to use if there is no stored value
     ///     - onError: The error hander
     ///     - coder: The coder to en-/decode the value
-    public init<S: StringProtocol>(storage: Storage, key: S, default: [K: V] = [:], onError: ErrorHandler? = nil,
-                                   coder: Coder = JSONCoder.default) {
-        self.box = PersistentBox(storage: storage, key: key, default: `default`, onError: onError, coder: coder)
+    public init<S: StringProtocol>(storage: Storage, key: S, default: @autoclosure () -> [K: V] = [:],
+                                   onError: ErrorHandler? = nil, coder: Coder = JSONCoder.default) {
+        self.box = PersistentBox(storage: storage, key: key, default: `default`(), onError: onError, coder: coder)
     }
     /// Either loads the the stored dictionary or uses the default value
     ///
@@ -42,7 +42,7 @@ public final class PersistentDict<K: Codable & Hashable, V: Codable> {
     
     /// Accesses the value for the given key
     public subscript(index: K) -> V? {
-        get { self.box.get({ $0[index] }) }
-        set { self.box.get({ $0[index] = newValue }) }
+        get { self.box({ $0[index] }) }
+        set { self.box({ $0[index] = newValue }) }
     }
 }

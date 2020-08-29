@@ -13,8 +13,8 @@ final class PersistentStateTests: XCTestCase {
     }
     override func tearDown() {
         if FileManager.default.fileExists(atPath: self.testDir.path) {
-        	print("Deleting \"\(self.testDir.path)\"...")
-        	try! FileManager.default.removeItem(at: self.testDir)
+            print("Deleting \"\(self.testDir.path)\"...")
+            try! FileManager.default.removeItem(at: self.testDir)
         }
     }
     
@@ -23,7 +23,7 @@ final class PersistentStateTests: XCTestCase {
         
         for shadow in 0..<512 {
             let counter = PersistentBox(storage: storage, key: "Counter", default: 0)
-            let value = counter.get({ (value: inout Int) -> Int in
+            let value = counter({ (value: inout Int) -> Int in
                 defer { value += 1 }
                 return value
             })
@@ -57,10 +57,10 @@ final class PersistentStateTests: XCTestCase {
                 let storage = try! FilesystemStorage(bundleID: "de.KizzyCode.PersistentStorage.Example")
                 self.value = .init(storage: storage, key: "Counter.\(name)", default: 0)
             }
-			
+    	    
             /// Returns the next counter value
             public func next() -> Int {
-                self.value.get({ (value: inout Int) -> Int in
+                self.value({ (value: inout Int) -> Int in
                     defer { value += 1 }
                     return value
                 })
