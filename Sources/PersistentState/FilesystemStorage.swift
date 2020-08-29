@@ -163,18 +163,18 @@ extension FilesystemStorage: Storage {
 
 
 // Implement base64 URL-safe encoding
-public extension StringProtocol {
+public extension DataProtocol {
     /// The string as URL-safe base64 encoded string
     var base64Urlsafe: String {
         // Make string URL-safe
-        self.data(using: .utf8)!.base64EncodedString()
+        Data(self).base64EncodedString()
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .trimmingCharacters(in: CharacterSet(charactersIn: "="))
     }
 }
 // Implement base64 URL-safe decoding
-public extension String {
+public extension Data {
     /// Decodes a base64 URL-safe encoded string
     ///
     ///  - Parameter encoded: The encoded string to decode
@@ -194,7 +194,27 @@ public extension String {
         guard let decoded = Data(base64Encoded: encoded) else {
             return nil
         }
-        guard let string = String(data: decoded, encoding: .utf8) else {
+        self = decoded
+    }
+}
+
+
+// Implement base64 URL-safe encoding
+public extension StringProtocol {
+    /// The string as URL-safe base64 encoded string
+    var base64Urlsafe: String { self.data(using: .utf8)!.base64Urlsafe }
+}
+// Implement base64 URL-safe decoding
+public extension String {
+    /// Decodes a base64 URL-safe encoded string
+    ///
+    ///  - Parameter encoded: The encoded string to decode
+    ///  - Returns: The successfully decoded string or `nil`
+    init?<S: StringProtocol>(base64Urlsafe encoded: S) {
+        guard let data = Data(base64Urlsafe: encoded) else {
+            return nil
+        }
+        guard let string = String(data: data, encoding: .utf8) else {
             return nil
         }
         self = string
