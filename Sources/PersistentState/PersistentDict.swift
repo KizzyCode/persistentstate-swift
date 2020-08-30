@@ -47,10 +47,39 @@ public final class PersistentDict<K: Codable & Hashable, V: Codable> {
     }
     
     /// Gets the stored value for `key` or inserts `default` and returns the value
+    ///
+    ///  - Parameters:
+    ///     - key: The key
+    ///     - default: The default value to insert and return if there is no value for `key` yet
+    ///  - Returns: The value for `key` or the newly inserted `default` value
     public func getOrInsert(key: K, default: @autoclosure () -> V) -> V {
         if self[key] == nil {
             self[key] = `default`()
         }
         return self[key]!
+    }
+    
+    /// Accesses/modifies the persistent value for `key` and writes the modified variable to the persistent storage
+    ///
+    ///  - Parameters:
+    ///     - key: The key
+    ///     - default: The default value to insert and return if there is no value for `key` yet
+    ///     - access: The accessor/modifier for the value
+    ///  - Returns: The value returned by the closure
+    ///
+    ///  - Throws: Rethrows any error from the closure
+    ///
+    ///  - Warning: If there is no value for `key` and `default` is `nil`, a fatal error is raised.
+    public func callAsFunction<R>(key: K, default: @autoclosure () -> V? = nil,
+                                  _ access: (inout V) throws -> R) rethrows -> R {
+        // Load the value
+        if self[key] == nil {
+            self[key] = `default`() ?? { fatalError("There is no value for the given key \(key)") }()
+        }
+        var value = self[key]!
+        
+        // Set the modified value and return the accessor result
+        defer { self[key] = value }
+        return try access(&value)
     }
 }
