@@ -45,4 +45,12 @@ public final class PersistentDict<K: Codable & Hashable, V: Codable> {
         get { self.box({ $0[index] }) }
         set { self.box({ $0[index] = newValue }) }
     }
+    
+    /// Gets the stored value for `key` or inserts `default` and returns the value
+    public func getOrInsert(key: K, default: @autoclosure () -> V) -> V {
+        if self[key] == nil {
+            self[key] = `default`()
+        }
+        return self[key]!
+    }
 }
