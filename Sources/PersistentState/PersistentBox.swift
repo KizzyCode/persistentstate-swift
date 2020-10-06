@@ -67,17 +67,29 @@ public final class PersistentBox<T: Codable> {
     ///
     ///  - Throws: Rethrows any error from the closure
     public func callAsFunction<R>(_ access: (inout T) throws -> R) rethrows -> R {
+        var value = self.get()
+        defer { self.set(value) }
+        return try access(&value)
+    }
+    
+    /// Gets the current value
+    ///
+    ///  - Returns: The current value
+    public func get() -> T {
         // Load value if necessary
         if self.value == nil {
             let data = self.storage.read(self.key)!
             self.value = try! self.coder.decode(T.self, from: data)
         }
-        
-        /// Write the value after access
-        defer {
-            let data = try! self.coder.encode(self.value!)
-            self.storage.tryWrite(self.key, value: data, onError: self.onError)
-        }
-        return try access(&self.value!)
+        return self.value!
+    }
+    /// Gets the current value
+    ///
+    ///  - Returns: The current value
+    public func set(_ value: T) {
+        // Write the value
+        self.value = value
+        let data = try! self.coder.encode(self.value!)
+        self.storage.tryWrite(self.key, value: data, onError: self.onError)
     }
 }
