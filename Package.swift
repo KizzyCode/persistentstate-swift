@@ -3,19 +3,25 @@
 import PackageDescription
 
 let package = Package(
-    name: "PersistentState",
+    name: "ValueProvider",
     products: [
         .library(
-            name: "PersistentState",
-            targets: ["PersistentState"])
+            name: "ValueProvider",
+            targets: ["ValueProvider"]),
+        .library(
+            name: "FilesystemValueProvider",
+            targets: ["FilesystemValueProvider"])
     ],
     dependencies: [],
     targets: [
         .target(
-            name: "PersistentState",
+            name: "ValueProvider",
             dependencies: []),
+        .target(
+            name: "FilesystemValueProvider",
+            dependencies: ["ValueProvider"]),
         .testTarget(
-            name: "PersistentStateTests",
-            dependencies: ["PersistentState"])
+            name: "FilesystemValueProviderTests",
+            dependencies: ["ValueProvider", "FilesystemValueProvider"])
     ]
 )

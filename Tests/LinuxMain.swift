@@ -1,7 +1,7 @@
 import XCTest
 
-import PersistentStateTests
+import FilesystemValueProviderTests
 
 var tests = [XCTestCaseEntry]()
-tests += PersistentStateTests.allTests()
+tests += FilesystemValueProviderTests.allTests()
 XCTMain(tests)

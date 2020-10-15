@@ -5,7 +5,7 @@ switch_case_alignment:
     indented_cases: true
 
 disabled_rules:
- - file_length
+ - identifier_name
  - vertical_whitespace
  - trailing_whitespace
  - force_try
