@@ -19,6 +19,14 @@ public struct AnyMappedValue<Value: Codable> {
         self._store = { try mappedValue.store($0) }
         self._delete = { try mappedValue.delete() }
     }
+    
+    // A specialized constructor to avoid the nesting of `AnyMappedValue`s
+    /// Wraps a s specific `MappedValue` implementation
+    ///
+    ///  - Parameter mappedValue: The value to map
+    public init(_ mappedValue: AnyMappedValue<Value>) {
+        self = mappedValue
+    }
 }
 extension AnyMappedValue: MappedValue {
     public func load() throws -> Value {
@@ -48,9 +56,9 @@ public struct AnyMappedDictionary<Key: Codable & Hashable, Value: Codable> {
     /// The `delete` implementation
     private let _delete: () throws -> Void
     
-    /// Wraps a s specific `MappedValue` implementation
+    /// Wraps a specific `MappedValue` implementation
     ///
-    ///  - Parameter mappedValue: The value to map
+    ///  - Parameter mappedDictionary: The dictionary to map
     public init<T: MappedDictionary>(_ mappedDictionary: T) where T.Key == Key, T.Value == Value {
         var mappedDictionary = mappedDictionary
         self._list = { try mappedDictionary.list() }
@@ -59,6 +67,14 @@ public struct AnyMappedDictionary<Key: Codable & Hashable, Value: Codable> {
         self._loadOrInsert = { try mappedDictionary.load(key: $0, default: $1) }
         self._store = { try mappedDictionary.store(key: $0, value: $1) }
         self._delete = { try mappedDictionary.delete() }
+    }
+    
+    // A specialized constructor to avoid the nesting of `AnyMappedDictionary`s
+    /// Wraps a specific `MappedValue` implementation
+    ///
+    ///  - Parameter mappedDictionary: The dictionary to map
+    public init(_ mappedDictionary: AnyMappedDictionary<Key, Value>) {
+        self = mappedDictionary
     }
 }
 extension AnyMappedDictionary: MappedDictionary {
