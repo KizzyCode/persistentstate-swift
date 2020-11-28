@@ -1,6 +1,5 @@
 import Foundation
 import ValueProvider
-import CryptoKit
 
 
 /// A filesystem mapped dictionary
@@ -71,9 +70,11 @@ public struct FilesystemMappedDictionary<Key: Codable & Hashable, Value: Codable
 extension FilesystemMappedDictionary: MappedDictionary {
     public func list() throws -> Set<Key> {
         // List all entries
-        let entries = try FileManager.default.contentsOfDirectory(at: self.dictionaryBasePath,
-                                                                  includingPropertiesForKeys: nil,
-                                                                  options: .skipsHiddenFiles)
+        let entries =
+            try FileManager.default.contentsOfDirectory(
+                at: self.dictionaryBasePath,
+                includingPropertiesForKeys: nil,
+                options: .skipsHiddenFiles)
         
         // Parse all entries
         let encodedKeys = entries.compactMap({ try? Data(base64Safe: $0.lastPathComponent) })

@@ -1,7 +1,38 @@
 import Foundation
 
 
-/// A generic box around a specific `MappedValue` implementation
+/// A mapped value
+@propertyWrapper public struct Mapped<Value: Codable> {
+    /// The mapped value
+    private var mapped: AnyMappedValue<Value>
+    
+    /// Creates a new mapped value
+    ///
+    ///  - Parameters:
+    ///     - provider: The value provider
+    ///     - id: The value ID
+    ///     - default: A default value to insert if there is no mapped value yet
+    public init(provider: ValueProvider, for id: ID, default: Value) {
+        self.mapped = try! provider.value(for: id, default: `default`)
+    }
+    /// Creates a new mapped value
+    ///
+    ///  - Parameters:
+    ///     - provider: The value provider
+    ///     - id: The value ID
+    public init(provider: ValueProvider, for id: ID) where Value: Default {
+        self.mapped = try! provider.value(for: id)
+    }
+    
+    /// The wrapped value
+    public var wrappedValue: Value {
+        get { try! self.mapped.load() }
+        set { try! self.mapped.store(newValue) }
+    }
+}
+
+
+/// A type erased `MappedValue` implementation
 public struct AnyMappedValue<Value: Codable> {
     /// The `load` implementation
     private let _load: () throws -> Value
@@ -41,7 +72,7 @@ extension AnyMappedValue: MappedValue {
 }
 
 
-/// A generic box around a specific `MappedDictionary` implementation
+/// A type erased `MappedDictionary` implementation
 public struct AnyMappedDictionary<Key: Codable & Hashable, Value: Codable> {
     /// The `list` implementation
     private let _list: () throws -> Set<Key>
@@ -95,14 +126,5 @@ extension AnyMappedDictionary: MappedDictionary {
     }
     public mutating func delete() throws {
         try self._delete()
-    }
-}
-
-
-// Implements easy access to the UTF-8 bytes of the string
-public extension String {
-    /// The UTF-8 bytes of the string
-    var bytes: Data {
-        self.data(using: .utf8)!
     }
 }

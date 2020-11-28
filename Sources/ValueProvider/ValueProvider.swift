@@ -1,26 +1,45 @@
 import Foundation
 
 
-/// A value encoder
-public protocol ValueEncoder {
-    /// Encodes an instance of the indicated type
+/// A value provider
+public protocol ValueProvider {
+    /// Maps an existing value
     ///
-    /// - Parameter value: The instance to encode
-    func encode<T: Encodable>(_ value: T) throws -> Data
-}
-extension JSONEncoder: ValueEncoder {}
-
-
-/// A value decoder
-public protocol ValueDecoder {
-    /// Decodes an instance of the indicated type
+    ///  - Parameter id: The ID of the value to map
+    ///  - Returns: The mapped value if exists or `nil`
+    func value<T: Codable>(for id: ID) throws -> AnyMappedValue<T>?
+    /// Maps an existing value or inserts a default value
     ///
     ///  - Parameters:
-    ///     - type: The target type
-    ///     - data: The data to decode
-    func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T
+    ///     - id: The ID of the value to map
+    ///     - default: A default value to insert if there is no mapped value yet
+    ///  - Returns: The mapped value
+    func value<T: Codable>(for id: ID, default: T) throws -> AnyMappedValue<T>
+    
+    /// Maps an existing dictionary
+    ///
+    ///  - Parameters:
+    ///     - id: The ID of the dictionary to map
+    ///     - default: A default value to insert if there is no mapped dictionary yet
+    ///  - Returns: The mapped dictionary if it exists or `nil`
+    func dictionary<K: Hashable & Codable, V: Codable>(for id: ID) throws -> AnyMappedDictionary<K, V>?
+    /// Maps an existing dictionary or inserts default key-value pairs
+    ///
+    ///  - Parameters:
+    ///     - id: The ID of the dictionary to map
+    ///     - default: A default value to insert if there is no mapped dictionary yet
+    ///  - Returns: The mapped dictionary
+    func dictionary<K: Hashable & Codable, V: Codable>(for id: ID, default: [K: V]) throws -> AnyMappedDictionary<K, V>
 }
-extension JSONDecoder: ValueDecoder {}
+public extension ValueProvider {
+    /// Maps an existing value
+    ///
+    ///  - Parameter id: The ID of the value to map
+    ///  - Returns: The mapped value if exists or a default
+    func value<T: Codable & Default>(for id: ID) throws -> AnyMappedValue<T> {
+        try self.value(for: id, default: T())
+    }
+}
 
 
 /// A mapped value (i.e. a value provided by a value provider)
@@ -38,13 +57,6 @@ public protocol MappedValue {
     mutating func store(_ newValue: Value) throws
     /// Deletes the value
     mutating func delete() throws
-}
-public extension MappedValue {
-    /// A `get`/`set`-wrapper around the `load` and `store` functions
-    var value: Value {
-        get { try! self.load() }
-        set { try! self.store(newValue) }
-    }
 }
 
 
@@ -97,42 +109,9 @@ public extension MappedDictionary {
         try! self.load()
     }
     
-    
     /// A `subscript`-wrapper around the `load` and `store` functions
     subscript(_ key: Key) -> Value? {
         get { try! self.load(key: key) }
         set { try! self.store(key: key, value: newValue) }
     }
-}
-
-
-/// A value provider
-public protocol ValueProvider {
-    /// Maps an existing value
-    ///
-    ///  - Parameter id: The ID of the value to map
-    ///  - Returns: The mapped value if exists or `nil`
-    func value<T: Codable>(id: Data) throws -> AnyMappedValue<T>?
-    /// Maps an existing value or inserts a default value
-    ///
-    ///  - Parameters:
-    ///     - id: The ID of the value to map
-    ///     - default: A default value to insert if there is no mapped value yet
-    ///  - Returns: The mapped value
-    func value<T: Codable>(id: Data, default: T) throws -> AnyMappedValue<T>
-    
-    /// Maps an existing dictionary
-    ///
-    ///  - Parameters:
-    ///     - id: The ID of the dictionary to map
-    ///     - default: A default value to insert if there is no mapped dictionary yet
-    ///  - Returns: The mapped dictionary if it exists or `nil`
-    func dictionary<K: Hashable & Codable, V: Codable>(id: Data) throws -> AnyMappedDictionary<K, V>?
-    /// Maps an existing dictionary or inserts default key-value pairs
-    ///
-    ///  - Parameters:
-    ///     - id: The ID of the dictionary to map
-    ///     - default: A default value to insert if there is no mapped dictionary yet
-    ///  - Returns: The mapped dictionary
-    func dictionary<K: Hashable & Codable, V: Codable>(id: Data, default: [K: V]) throws -> AnyMappedDictionary<K, V>
 }

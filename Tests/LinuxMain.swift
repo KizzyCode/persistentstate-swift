@@ -3,5 +3,6 @@ import XCTest
 import FilesystemValueProviderTests
 
 var tests = [XCTestCaseEntry]()
-tests += FilesystemValueProviderTests.allTests()
+tests += FilesystemValueProviderTests.__allTests()
+
 XCTMain(tests)

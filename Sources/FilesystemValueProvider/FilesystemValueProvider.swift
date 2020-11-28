@@ -44,26 +44,61 @@ public struct FilesystemValueProvider {
             throw FilesystemValueProviderError.accessError("Failed to create/delete test file: \(err)")
         }
     }
+    
+    /// Creates a new filesystem value provider with `DefaultPath.applicationData(bundleID)` as path
+    ///
+    ///  - Parameters:
+    ///     - bundleID: The bundle ID to get the default application data folder for
+    ///     - encoder: The value encoder to use
+    ///     - decoder: The value decoder to use
+    public init(for bundleID: String, encoder: ValueEncoder = JSONEncoder(),
+                decoder: ValueDecoder = JSONDecoder()) throws {
+        let path = DefaultPath.applicationData(for: bundleID)
+        try self.init(basePath: path, encoder: encoder, decoder: decoder)
+    }
+    
+    #if os(iOS) || os(watchOS) || os(tvOS)
+    /// Creates a new filesystem value provider with `DefaultPath.applicationData` as path
+    ///
+    ///  - Parameters:
+    ///     - encoder: The value encoder to use
+    ///     - decoder: The value decoder to use
+    public init(encoder: ValueEncoder = JSONEncoder(), decoder: ValueDecoder = JSONDecoder()) throws {
+        let path = DefaultPath.applicationData
+        try self.init(basePath: path, encoder: encoder, decoder: decoder)
+    }
+    #endif
 }
 extension FilesystemValueProvider: ValueProvider {
-    public func value<T: Codable>(id: Data) throws -> AnyMappedValue<T>? {
-        FilesystemMappedValue<T>(id: id, basePath: self.basePath, encoder: self.encoder, decoder: self.decoder)
-            .map({ AnyMappedValue($0) })
+    public func value<T: Codable>(for id: ID) throws -> AnyMappedValue<T>? {
+        let value =
+            FilesystemMappedValue<T>(
+                id: id.bytes, basePath: self.basePath,
+                encoder: self.encoder, decoder: self.decoder)
+        return value.map({ AnyMappedValue($0) })
     }
-    public func value<T: Codable>(id: Data, default: T) throws -> AnyMappedValue<T> {
-        let value = try FilesystemMappedValue(id: id, default: `default`, basePath: self.basePath,
-                                              encoder: self.encoder, decoder: self.decoder)
+    public func value<T: Codable>(for id: ID, default: T) throws -> AnyMappedValue<T> {
+        let value =
+            try FilesystemMappedValue(
+                id: id.bytes, default: `default`, basePath: self.basePath,
+                encoder: self.encoder, decoder: self.decoder)
         return AnyMappedValue(value)
     }
     
-    public func dictionary<K: Hashable & Codable, V: Codable>(id: Data) throws -> AnyMappedDictionary<K, V>? {
-        FilesystemMappedDictionary<K, V>(id: id, basePath: self.basePath, encoder: self.encoder, decoder: self.decoder)
-            .map({ AnyMappedDictionary($0) })
+    public func dictionary<K: Hashable & Codable, V: Codable>(for id: ID) throws -> AnyMappedDictionary<K, V>? {
+        let dictionary =
+            FilesystemMappedDictionary<K, V>(
+                id: id.bytes, basePath: self.basePath,
+                encoder: self.encoder, decoder: self.decoder)
+        return dictionary.map({ AnyMappedDictionary($0) })
     }
-    public func dictionary<K: Hashable & Codable, V: Codable>(id: Data,
-                                                              default: [K: V]) throws -> AnyMappedDictionary<K, V> {
-        let dictionary = try FilesystemMappedDictionary(id: id, basePath: self.basePath, default: `default`,
-                                                        encoder: self.encoder, decoder: self.decoder)
+    public func dictionary<K: Hashable & Codable, V: Codable>(for id: ID, default: [K: V]) throws
+        -> AnyMappedDictionary<K, V>
+    {
+        let dictionary =
+            try FilesystemMappedDictionary(
+                id: id.bytes, basePath: self.basePath, default: `default`,
+                encoder: self.encoder, decoder: self.decoder)
         return AnyMappedDictionary(dictionary)
     }
 }
@@ -72,12 +107,12 @@ extension FilesystemValueProvider: ValueProvider {
 /// Provides some default paths
 public struct DefaultPath {
     #if os(iOS) || os(watchOS) || os(tvOS)
-        /// A path to the application data directory; usually something like
-        /// `/var/mobile/Containers/Data/Application/<Some_UUID>/Documents/`
-        public static let applicationData = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    /// A path to the application data directory; usually something like
+    /// `/var/mobile/Containers/Data/Application/<Some_UUID>/Documents/`
+    public static let applicationData = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     #endif
     
-    /// Returns the application ID for a given bundle ID
+    /// Gets the default application data folder for a given bundle ID
     ///
     ///  - Parameter bundleID: The bundle ID
     ///  - Returns: The applications data directory; i.e.
@@ -85,17 +120,17 @@ public struct DefaultPath {
     ///     - `/Users/<Current_User>/Library/Application Support/<Bundle_ID>/` on Catalyst and macOS
     ///     - `~/.<Bundle_ID>` for other OS
     public static func applicationData<S: StringProtocol>(for bundleID: S) -> URL {
-        #if os(macOS) || targetEnvironment(macCatalyst)
-            return FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("Application Support")
-                .appendingPathComponent(String(bundleID))
-        #elseif os(iOS) || os(watchOS) || os(tvOS)
-            _ = bundleID
-            return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        #else
-            let userDir = ("~" as NSString).expandingTildeInPath
-            return URL(fileURLWithPath: userDir).appendingPathComponent(".\(bundleID)")
-        #endif
+    #if os(macOS) || targetEnvironment(macCatalyst)
+        return FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Application Support")
+            .appendingPathComponent(String(bundleID))
+    #elseif os(iOS) || os(watchOS) || os(tvOS)
+        _ = bundleID
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    #else
+        let userDir = ("~" as NSString).expandingTildeInPath
+        return URL(fileURLWithPath: userDir).appendingPathComponent(".\(bundleID)")
+    #endif
     }
 }
 
